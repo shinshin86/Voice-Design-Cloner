@@ -2,6 +2,7 @@
 
 import sys
 import io
+import os
 import warnings
 import logging
 
@@ -53,6 +54,19 @@ if hasattr(sys.stderr, "buffer"):
 warnings.filterwarnings("ignore", message="Trying to convert audio automatically")
 
 
+def _env_bool(name: str, default: bool) -> bool:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    return value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+SERVER_NAME = os.getenv("VDC_SERVER_NAME", "127.0.0.1")
+SERVER_PORT = int(os.getenv("VDC_SERVER_PORT", "7860"))
+INBROWSER = _env_bool("VDC_INBROWSER", True)
+SHARE = _env_bool("VDC_SHARE", False)
+
+
 def _asyncio_exception_handler(loop, context):
     exc = context.get("exception")
     if isinstance(exc, ConnectionResetError):
@@ -64,6 +78,10 @@ asyncio.get_event_loop().set_exception_handler(_asyncio_exception_handler)
 
 manager = ModelManager()
 logger.info("VoiceDesignCloner starting (backend=%s)", manager.backend)
+logger.info(
+    "Launch config: server_name=%s server_port=%s inbrowser=%s share=%s",
+    SERVER_NAME, SERVER_PORT, INBROWSER, SHARE,
+)
 
 with gr.Blocks(title="VoiceDesignCloner", theme="NoCrypt/miku") as demo:
     gr.Markdown("# VoiceDesignCloner")
@@ -82,8 +100,8 @@ with gr.Blocks(title="VoiceDesignCloner", theme="NoCrypt/miku") as demo:
 
 demo.queue(default_concurrency_limit=1)
 demo.launch(
-    server_name="127.0.0.1",
-    server_port=7860,
-    inbrowser=True,
-    share=False,
+    server_name=SERVER_NAME,
+    server_port=SERVER_PORT,
+    inbrowser=INBROWSER,
+    share=SHARE,
 )

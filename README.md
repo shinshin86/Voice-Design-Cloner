@@ -80,6 +80,114 @@ pip install faster-qwen3-tts
 
 > **初回起動について**: 初回のみ faster バックエンドが standard にフォールバックすることがあります。2回目以降は正常に faster で動作します。
 
+### Google Colab で起動する
+
+Colab ノートブック自体は同梱していませんが、以下のセルを **上から順にコピペ実行** すると、Colab 上で WebUI を起動し、Cloudflared で外部公開できます。
+
+**前提:**
+- Colab のランタイムは **GPU** を選択してください
+- 初回は Hugging Face からモデルをダウンロードするため時間がかかります
+- Cloudflared の Quick Tunnel は **開発・検証用** です
+
+**1. セットアップ**
+
+```bash
+%%bash
+set -euo pipefail
+
+cd /content
+if [ ! -d Voice-Design-Cloner ]; then
+  git clone https://github.com/shinshin86/Voice-Design-Cloner.git
+fi
+cd /content/Voice-Design-Cloner
+
+apt-get update
+apt-get install -y sox ffmpeg curl wget
+
+python -m pip install -U pip setuptools wheel
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+else
+  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
+fi
+
+pip install numpy
+pip install -r requirements.txt
+
+if command -v nvidia-smi >/dev/null 2>&1; then
+  pip install faster-qwen3-tts || true
+fi
+
+if [ ! -x /usr/local/bin/cloudflared ]; then
+  wget -q https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -O /usr/local/bin/cloudflared
+  chmod +x /usr/local/bin/cloudflared
+fi
+```
+
+**2. WebUI 起動 + Cloudflared 公開**
+
+```bash
+%%bash
+set -euo pipefail
+
+cd /content/Voice-Design-Cloner
+
+LOG_DIR=/tmp/voice-design-cloner-colab
+mkdir -p "$LOG_DIR"
+APP_LOG="$LOG_DIR/app.log"
+CLOUDFLARED_LOG="$LOG_DIR/cloudflared.log"
+
+if ! curl -fsS http://127.0.0.1:7860/ > /dev/null 2>&1; then
+  VDC_INBROWSER=0 VDC_SERVER_NAME=127.0.0.1 VDC_SERVER_PORT=7860 VDC_SHARE=0 \
+    nohup python app.py > "$APP_LOG" 2>&1 &
+  echo $! > "$LOG_DIR/app.pid"
+fi
+
+for _ in $(seq 1 120); do
+  curl -fsS http://127.0.0.1:7860/ > /dev/null 2>&1 && break
+  sleep 2
+done
+
+if ! curl -fsS http://127.0.0.1:7860/ > /dev/null 2>&1; then
+  echo "[ERROR] WebUI が 7860 で応答しません。app.log を確認してください:"
+  tail -n 80 "$APP_LOG" || true
+  exit 1
+fi
+
+nohup cloudflared tunnel --url http://127.0.0.1:7860 > "$CLOUDFLARED_LOG" 2>&1 &
+echo $! > "$LOG_DIR/cloudflared.pid"
+
+PUBLIC_URL=""
+for _ in $(seq 1 60); do
+  PUBLIC_URL="$(grep -Eo 'https://[-a-z0-9]+\.trycloudflare\.com' "$CLOUDFLARED_LOG" | head -n 1 || true)"
+  [ -n "$PUBLIC_URL" ] && break
+  sleep 1
+done
+
+if [ -z "$PUBLIC_URL" ]; then
+  echo "[ERROR] Cloudflared の公開URLを取得できませんでした。cloudflared.log を確認してください:"
+  tail -n 80 "$CLOUDFLARED_LOG" || true
+  exit 1
+fi
+
+echo ""
+echo "[OK] VoiceDesignCloner on Colab"
+echo "Public URL: ${PUBLIC_URL}"
+echo "App log   : ${APP_LOG}"
+echo "Tunnel log: ${CLOUDFLARED_LOG}"
+```
+
+起動に成功すると、`Public URL:` に `https://xxxxx.trycloudflare.com` が表示されます。そこへアクセスすると WebUI を開けます。
+
+**3. 停止したい場合**
+
+```bash
+%%bash
+pkill -f "python app.py" || true
+pkill -f "cloudflared tunnel --url http://127.0.0.1:7860" || true
+```
+
 ---
 
 ## 使い方

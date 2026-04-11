@@ -8,5 +8,9 @@ fi
 
 source venv/bin/activate
 echo "[INFO] Starting VoiceDesignCloner..."
-echo "[INFO] Browser will open automatically. If not, go to http://127.0.0.1:7860"
+if [ "${VDC_INBROWSER:-1}" = "1" ]; then
+    echo "[INFO] Browser will open automatically. If not, go to http://${VDC_SERVER_NAME:-127.0.0.1}:${VDC_SERVER_PORT:-7860}"
+else
+    echo "[INFO] Open http://${VDC_SERVER_NAME:-127.0.0.1}:${VDC_SERVER_PORT:-7860} manually."
+fi
 python app.py
