@@ -8,6 +8,12 @@ import re
 import soundfile as sf
 from config import OUTPUT_DIR
 
+_TTS_LANG_MAP = {
+    "ja": "japanese", "en": "english", "zh": "chinese", "ko": "korean",
+    "de": "german", "fr": "french", "es": "spanish", "it": "italian",
+    "pt": "portuguese", "ru": "russian",
+}
+
 logger = logging.getLogger(__name__)
 _SAFE_SEGMENT_RE = re.compile(r"[^A-Za-z0-9_.-]+")
 
@@ -30,6 +36,8 @@ def batch_clone(
     esd_filename: str = "Neutral.txt",
     model_key: str = "1.7B-Base",
     target_sr: int = 44100,
+    corpus_lang: str = "ja",
+    tts_language: str | None = None,
 ):
     """Clone a voice across all texts. Yields (progress_pct, status_msg) per file,
     then yields (1.0, stats_dict) as the final item."""
@@ -75,9 +83,10 @@ def batch_clone(
         filename = f"{i + 1:04d}.wav"
 
         try:
+            lang_str = tts_language or _TTS_LANG_MAP.get(corpus_lang, "auto")
             wavs, sr = manager.current_model.generate_voice_clone(
                 text=text,
-                language="auto",
+                language=lang_str,
                 voice_clone_prompt=prompt_items,
             )
         except Exception as e:

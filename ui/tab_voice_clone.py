@@ -3,10 +3,11 @@
 import logging
 import gradio as gr
 from modules.voice_clone import batch_clone
-from modules.voice_design import list_kept_voice_numbers, get_kept_voice_path, get_kept_voice_text
+from modules.voice_design import list_kept_voice_numbers, get_kept_voice_path, get_kept_voice_text, TTS_LANGUAGES
 from modules.utils import list_corpus_files, load_corpus, format_duration
 from modules.model_manager import ModelManager
-from config import DEFAULT_TARGET_SR
+from config import DEFAULT_TARGET_SR, TTS_LANG
+from lang import t
 
 logger = logging.getLogger(__name__)
 
@@ -17,128 +18,138 @@ def _read_uploaded_text_file(filepath: str) -> list[str]:
 
 
 def _resolve_uploaded_path(uploaded_file) -> str | None:
-    """Resolve Gradio upload value into a local filepath."""
     if not uploaded_file:
         return None
     if isinstance(uploaded_file, str):
         return uploaded_file
     if isinstance(uploaded_file, dict):
-        # Gradio may provide {"path": "..."} depending on version/component.
         return uploaded_file.get("path") or uploaded_file.get("name")
     return getattr(uploaded_file, "name", str(uploaded_file))
 
 
 def build_voice_clone_tab(manager: ModelManager):
     resolved_ref_path = gr.State(None)
-    ref_mode = gr.State("ショートカット")
-    corpus_mode = gr.State("ファイル選択")
+    ref_mode = gr.State(t("vc_ref_tab_shortcut"))
+    corpus_mode = gr.State(t("vc_corpus_tab_file"))
+    corpus_lang_state = gr.State("ja")
 
     with gr.Row():
         # ── Left ──
         with gr.Column(scale=3):
-            gr.Markdown("### 1. 参照音声")
+            gr.Markdown(t("vc_ref_section"))
             with gr.Group():
                 with gr.Tabs():
-                    with gr.Tab("ショートカット"):
+                    with gr.Tab(t("vc_ref_tab_shortcut")):
                         nums = list_kept_voice_numbers()
                         shortcut_choices = [str(n) for n in nums] if nums else []
                         _init_ref_text = get_kept_voice_text(nums[0]) if nums else ""
                         shortcut_dropdown = gr.Dropdown(
                             choices=shortcut_choices,
-                            label="voice_design 番号",
+                            label=t("vc_shortcut_label"),
                             value=shortcut_choices[0] if shortcut_choices else None,
                             allow_custom_value=False,
                         )
-                    with gr.Tab("アップロード"):
-                        upload_audio = gr.Audio(label="音声ファイル", type="filepath")
+                    with gr.Tab(t("vc_ref_tab_upload")):
+                        upload_audio = gr.Audio(label=t("vc_upload_audio_label"), type="filepath")
 
                 ref_text = gr.Textbox(
-                    label="参照音声の書き起こし",
-                    placeholder="ショートカットなら自動入力",
+                    label=t("vc_ref_text_label"),
+                    placeholder=t("vc_ref_text_placeholder"),
                     value=_init_ref_text,
                     lines=1,
                 )
 
-            refresh_btn = gr.Button("リスト更新", variant="secondary")
+            refresh_btn = gr.Button(t("vc_btn_refresh_ref"), variant="secondary")
 
             gr.HTML("<div style='height: 12px'></div>")
 
-            gr.Markdown("### 2. コーパス")
+            gr.Markdown(t("vc_corpus_section"))
             with gr.Group():
                 with gr.Tabs():
-                    with gr.Tab("ファイル選択"):
-                        corpus_files = list_corpus_files()
+                    with gr.Tab(t("vc_corpus_tab_file")):
+                        corpus_files = list_corpus_files("ja")
                         initial_corpus = corpus_files[0] if corpus_files else None
                         if initial_corpus:
-                            _init_texts = load_corpus(initial_corpus)
-                            _init_chars = sum(len(t) for t in _init_texts)
+                            _init_texts = load_corpus(initial_corpus, "ja")
+                            _init_chars = sum(len(t_) for t_ in _init_texts)
                         else:
                             _init_texts, _init_chars = [], 0
                         corpus_dropdown = gr.Dropdown(
                             choices=corpus_files,
-                            label="コーパスファイル",
+                            label=t("vc_corpus_file_label"),
                             value=initial_corpus,
                         )
-                    with gr.Tab("アップロード"):
+                    with gr.Tab(t("vc_corpus_tab_upload")):
                         upload_file = gr.File(
-                            label="テキストファイル（1行1文の.txt）",
+                            label=t("vc_corpus_upload_label"),
                             file_types=[".txt"],
                         )
 
+                corpus_lang_radio = gr.Radio(
+                    choices=["JA", "EN", "ZH"],
+                    value="JA",
+                    label=t("vc_corpus_lang_label"),
+                )
+
                 with gr.Row():
                     corpus_count = gr.Number(
-                        label="使用する文数（0=すべて）",
+                        label=t("vc_corpus_count_label"),
                         value=0, minimum=0, step=1,
                     )
                     corpus_total_lines = gr.Textbox(
-                        label="総文数",
+                        label=t("vc_corpus_total_lines_label"),
                         value=f"{len(_init_texts)} / {len(_init_texts)} 文" if _init_texts else "",
                         interactive=False,
                     )
                     corpus_total_chars = gr.Textbox(
-                        label="総文字数",
+                        label=t("vc_corpus_total_chars_label"),
                         value=f"{_init_chars} 文字" if _init_texts else "",
                         interactive=False,
                     )
 
-            corpus_refresh_btn = gr.Button("コーパス情報を更新", variant="secondary")
+            corpus_refresh_btn = gr.Button(t("vc_btn_corpus_refresh"), variant="secondary")
 
         # ── Right ──
         with gr.Column(scale=2):
-            gr.Markdown("### 3. 設定")
+            gr.Markdown(t("vc_settings_section"))
             with gr.Group():
                 model_choice = gr.Dropdown(
-                    choices=ModelManager.CLONE_MODELS, value="1.7B-Base", label="モデル",
+                    choices=ModelManager.CLONE_MODELS, value="1.7B-Base", label=t("vc_model_label"),
+                )
+                tts_lang_dropdown = gr.Dropdown(
+                    choices=TTS_LANGUAGES,
+                    value=TTS_LANG,
+                    label=t("vd_tts_lang_label"),
                 )
                 target_sr = gr.Dropdown(
-                    choices=[44100, 48000, 24000, 22050], value=DEFAULT_TARGET_SR, label="出力サンプルレート (Hz)",
+                    choices=[44100, 48000, 24000, 22050], value=DEFAULT_TARGET_SR, label=t("vc_sr_label"),
                 )
 
             gr.HTML("<div style='height: 12px'></div>")
 
-            gr.Markdown("### 出力先（output/）")
+            gr.Markdown(t("vc_output_section"))
             with gr.Group():
-                output_folder = gr.Textbox(label="フォルダ名", value="clone")
+                output_folder = gr.Textbox(label=t("vc_output_folder_label"), value="clone")
                 with gr.Row():
-                    wavs_folder = gr.Textbox(label="音声サブフォルダ名", value="raw")
-                    esd_filename = gr.Textbox(label="テキストリスト名（.txt自動付与）", value="Neutral")
+                    wavs_folder = gr.Textbox(label=t("vc_wavs_folder_label"), value="raw")
+                    esd_filename = gr.Textbox(label=t("vc_esd_filename_label"), value="Neutral")
                 with gr.Row():
-                    clone_btn = gr.Button("一括生成開始", variant="primary", scale=3)
-                    stop_btn = gr.Button("■ 停止", variant="secondary", scale=1)
+                    clone_btn = gr.Button(t("vc_btn_start"), variant="primary", scale=3)
+                    stop_btn = gr.Button(t("vc_btn_stop"), variant="secondary", scale=1)
 
             gr.HTML("<div style='height: 12px'></div>")
 
-            gr.Markdown("### 4. 進捗")
+            gr.Markdown(t("vc_progress_section"))
             with gr.Group():
-                progress_text = gr.Textbox(label="ステータス", interactive=False)
-                result_text = gr.Textbox(label="結果", interactive=False, lines=5)
+                progress_text = gr.Textbox(label=t("vc_progress_label"), interactive=False)
+                result_text = gr.Textbox(label=t("vc_result_label"), interactive=False, lines=5)
 
-    # ── Ref: shortcut interaction → shortcut mode ──
+    # ── Ref: shortcut ──
     def on_shortcut_select(num_str):
         if not num_str:
-            return None, "", "ショートカット"
+            return None, "", t("vc_ref_tab_shortcut")
         num = int(num_str)
-        return get_kept_voice_path(num), get_kept_voice_text(num), "ショートカット"
+        return get_kept_voice_path(num), get_kept_voice_text(num), t("vc_ref_tab_shortcut")
 
     shortcut_dropdown.change(
         fn=on_shortcut_select,
@@ -153,132 +164,156 @@ def build_voice_clone_tab(manager: ModelManager):
 
     refresh_btn.click(fn=on_refresh, outputs=[shortcut_dropdown])
 
-    # ── Ref: audio upload → upload mode ──
     upload_audio.change(
-        fn=lambda v: "アップロード" if v else "ショートカット",
+        fn=lambda v: t("vc_ref_tab_upload") if v else t("vc_ref_tab_shortcut"),
         inputs=[upload_audio],
         outputs=[ref_mode],
     )
 
-    # ── Corpus: dropdown interaction → file select mode ──
-    def on_corpus_dropdown_change(corpus_file, uploaded_file, count):
+    # ── Corpus: language selector ──
+    _LANG_CODE = {"JA": "ja", "EN": "en", "ZH": "zh"}
+
+    def on_corpus_lang_change(lang_choice, count):
+        lang = _LANG_CODE.get(lang_choice, "ja")
+        files = list_corpus_files(lang)
+        first = files[0] if files else None
         try:
-            texts = load_corpus(corpus_file) if corpus_file else []
-        except Exception as e:
-            logger.exception("Failed to load corpus from dropdown: %s", corpus_file)
-            return "ファイル選択", f"エラー: {e}", ""
-        if not texts:
-            return "ファイル選択", "", ""
+            texts = load_corpus(first, lang) if first else []
+        except Exception:
+            texts = []
         total = len(texts)
         limit = int(count) if count and int(count) > 0 else 0
         used = min(limit, total) if limit > 0 else total
-        used_chars = sum(len(t) for t in texts[:used])
-        return "ファイル選択", f"{used} / {total} 文", f"{used_chars} 文字"
+        used_chars = sum(len(tx) for tx in texts[:used])
+        lines_str = f"{used} / {total}" if texts else ""
+        chars_str = f"{used_chars}" if texts else ""
+        return lang, gr.update(choices=files, value=first), lines_str, chars_str
+
+    corpus_lang_radio.change(
+        fn=on_corpus_lang_change,
+        inputs=[corpus_lang_radio, corpus_count],
+        outputs=[corpus_lang_state, corpus_dropdown, corpus_total_lines, corpus_total_chars],
+    )
+
+    # ── Corpus: dropdown ──
+    def on_corpus_dropdown_change(corpus_file, uploaded_file, count, lang):
+        try:
+            texts = load_corpus(corpus_file, lang) if corpus_file else []
+        except Exception as e:
+            logger.exception("Failed to load corpus from dropdown: %s", corpus_file)
+            return t("vc_corpus_tab_file"), t("vc_err_file_load").format(e), ""
+        if not texts:
+            return t("vc_corpus_tab_file"), "", ""
+        total = len(texts)
+        limit = int(count) if count and int(count) > 0 else 0
+        used = min(limit, total) if limit > 0 else total
+        used_chars = sum(len(tx) for tx in texts[:used])
+        return t("vc_corpus_tab_file"), f"{used} / {total}", f"{used_chars}"
 
     corpus_dropdown.change(
         fn=on_corpus_dropdown_change,
-        inputs=[corpus_dropdown, upload_file, corpus_count],
+        inputs=[corpus_dropdown, upload_file, corpus_count, corpus_lang_state],
         outputs=[corpus_mode, corpus_total_lines, corpus_total_chars],
     )
 
-    # ── Corpus: file upload → upload mode ──
-    def on_upload_change(uploaded_file, corpus_file, count):
+    # ── Corpus: upload ──
+    def on_upload_change(uploaded_file, corpus_file, count, lang):
         try:
             if not uploaded_file:
-                texts = load_corpus(corpus_file) if corpus_file else []
-                mode = "ファイル選択"
+                texts = load_corpus(corpus_file, lang) if corpus_file else []
+                mode = t("vc_corpus_tab_file")
             else:
                 filepath = _resolve_uploaded_path(uploaded_file)
                 if not filepath:
-                    raise ValueError("アップロードされたファイルのパスを解決できませんでした")
+                    raise ValueError(t("vc_err_upload_path"))
                 texts = _read_uploaded_text_file(filepath)
-                mode = "アップロード"
+                mode = t("vc_corpus_tab_upload")
         except Exception as e:
             logger.exception("Failed to load corpus upload")
-            return "アップロード", f"エラー: {e}", ""
+            return t("vc_corpus_tab_upload"), t("vc_err_file_load").format(e), ""
         if not texts:
             return mode, "", ""
         total = len(texts)
         limit = int(count) if count and int(count) > 0 else 0
         used = min(limit, total) if limit > 0 else total
-        used_chars = sum(len(t) for t in texts[:used])
-        return mode, f"{used} / {total} 文", f"{used_chars} 文字"
+        used_chars = sum(len(tx) for tx in texts[:used])
+        return mode, f"{used} / {total}", f"{used_chars}"
 
     upload_file.change(
         fn=on_upload_change,
-        inputs=[upload_file, corpus_dropdown, corpus_count],
+        inputs=[upload_file, corpus_dropdown, corpus_count, corpus_lang_state],
         outputs=[corpus_mode, corpus_total_lines, corpus_total_chars],
     )
 
-    # ── Corpus count change / refresh ──
-    def on_info_refresh(mode, corpus_file, uploaded_file, count):
+    # ── Corpus count / refresh ──
+    def on_info_refresh(mode, corpus_file, uploaded_file, count, lang):
         try:
-            if mode == "アップロード" and uploaded_file:
+            if mode == t("vc_corpus_tab_upload") and uploaded_file:
                 filepath = _resolve_uploaded_path(uploaded_file)
                 if not filepath:
-                    raise ValueError("アップロードされたファイルのパスを解決できませんでした")
+                    raise ValueError(t("vc_err_upload_path"))
                 texts = _read_uploaded_text_file(filepath)
             elif corpus_file:
-                texts = load_corpus(corpus_file)
+                texts = load_corpus(corpus_file, lang)
             else:
                 return "", ""
         except Exception as e:
             logger.exception("Failed to refresh corpus info")
-            return f"エラー: {e}", ""
+            return t("vc_err_file_load").format(e), ""
         total = len(texts)
         limit = int(count) if count and int(count) > 0 else 0
         used = min(limit, total) if limit > 0 else total
-        used_chars = sum(len(t) for t in texts[:used])
-        return f"{used} / {total} 文", f"{used_chars} 文字"
+        used_chars = sum(len(tx) for tx in texts[:used])
+        return f"{used} / {total}", f"{used_chars}"
 
     corpus_count.change(
         fn=on_info_refresh,
-        inputs=[corpus_mode, corpus_dropdown, upload_file, corpus_count],
+        inputs=[corpus_mode, corpus_dropdown, upload_file, corpus_count, corpus_lang_state],
         outputs=[corpus_total_lines, corpus_total_chars],
     )
     corpus_refresh_btn.click(
         fn=on_info_refresh,
-        inputs=[corpus_mode, corpus_dropdown, upload_file, corpus_count],
+        inputs=[corpus_mode, corpus_dropdown, upload_file, corpus_count, corpus_lang_state],
         outputs=[corpus_total_lines, corpus_total_chars],
     )
 
     # ── Clone ──
-    def on_clone(r_mode, shortcut_num, uploaded_audio, ref_t, c_mode, corpus_file, uploaded_file, count, model, out_folder, wavs_name, esd_name, sr, resolved_path, progress=gr.Progress()):
-        if r_mode == "アップロード" and uploaded_audio:
+    def on_clone(r_mode, shortcut_num, uploaded_audio, ref_t, c_mode, corpus_file, uploaded_file, count, model, tts_lang, out_folder, wavs_name, esd_name, sr, resolved_path, corpus_lang, progress=gr.Progress()):
+        if r_mode == t("vc_ref_tab_upload") and uploaded_audio:
             ref = _resolve_uploaded_path(uploaded_audio)
         elif resolved_path:
             ref = resolved_path
         elif shortcut_num:
             ref = get_kept_voice_path(int(shortcut_num))
         else:
-            yield "エラー: 参照音声がありません", ""
+            yield t("vc_err_no_ref"), ""
             return
 
         if not ref:
-            yield "エラー: 参照音声が見つかりません", ""
+            yield t("vc_err_ref_not_found"), ""
             return
         if not ref_t.strip():
-            yield "エラー: 書き起こしテキストが空です", ""
+            yield t("vc_err_empty_ref_text"), ""
             return
 
         try:
-            if c_mode == "アップロード" and uploaded_file:
+            if c_mode == t("vc_corpus_tab_upload") and uploaded_file:
                 filepath = _resolve_uploaded_path(uploaded_file)
                 if not filepath:
-                    raise ValueError("アップロードされたファイルのパスを解決できませんでした")
+                    raise ValueError(t("vc_err_upload_path"))
                 texts = _read_uploaded_text_file(filepath)
             elif corpus_file:
-                texts = load_corpus(corpus_file)
+                texts = load_corpus(corpus_file, corpus_lang)
             else:
-                yield "エラー: テキストがありません", ""
+                yield t("vc_err_no_text"), ""
                 return
         except Exception as e:
             logger.exception("Failed to load clone texts")
-            yield f"エラー: テキスト読み込み失敗 ({e})", ""
+            yield t("vc_err_text_load_fail").format(e), ""
             return
 
         if not texts:
-            yield "エラー: テキストがありません", ""
+            yield t("vc_err_no_text"), ""
             return
 
         limit = int(count) if count and int(count) > 0 else 0
@@ -296,32 +331,35 @@ def build_voice_clone_tab(manager: ModelManager):
                 wavs_folder=wavs_name.strip() or "raw",
                 esd_filename=esd,
                 model_key=model, target_sr=int(sr),
+                corpus_lang=corpus_lang,
+                tts_language=tts_lang,
             ):
                 if isinstance(payload, dict):
                     stats = payload
-                    result = (
-                        f"ファイル数: {stats['total_files']}\n"
-                        f"総音声時間: {format_duration(stats['total_duration_sec'])}\n"
-                        f"出力先: {stats['output_dir']}\n"
-                        f"テキストリスト: {stats['esd_path']}"
+                    result = t("vc_result_files").format(
+                        stats["total_files"],
+                        format_duration(stats["total_duration_sec"]),
+                        stats["output_dir"],
+                        stats["esd_path"],
                     )
-                    yield "完了!", result
+                    yield t("vc_ok_done"), result
                 else:
                     progress(pct, desc=payload)
                     yield payload, ""
         except Exception as e:
             if "cancel" in type(e).__name__.lower() or "cancel" in str(e).lower():
-                yield "停止しました", ""
+                yield t("vc_stopped"), ""
             else:
                 logger.exception("Clone failed")
-                yield f"エラー: {e}", ""
+                yield t("vc_clone_fail").format(e), ""
 
     clone_event = clone_btn.click(
         fn=on_clone,
         inputs=[
             ref_mode, shortcut_dropdown, upload_audio, ref_text,
             corpus_mode, corpus_dropdown, upload_file, corpus_count,
-            model_choice, output_folder, wavs_folder, esd_filename, target_sr, resolved_ref_path,
+            model_choice, tts_lang_dropdown, output_folder, wavs_folder, esd_filename, target_sr, resolved_ref_path,
+            corpus_lang_state,
         ],
         outputs=[progress_text, result_text],
     )

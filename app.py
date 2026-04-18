@@ -1,14 +1,15 @@
 """VoiceDesignCloner — Qwen3-TTS GUI Tool."""
 
+import os
 import sys
 import io
-import os
 import warnings
 import logging
 
 import asyncio
 import gradio as gr
 from modules.model_manager import ModelManager
+from lang import t
 from ui.tab_voice_design import build_voice_design_tab
 from ui.tab_voice_clone import build_voice_clone_tab
 from ui.tab_tools import build_tools_tab
@@ -63,7 +64,8 @@ def _env_bool(name: str, default: bool) -> bool:
 
 SERVER_NAME = os.getenv("VDC_SERVER_NAME", "127.0.0.1")
 SERVER_PORT = int(os.getenv("VDC_SERVER_PORT", "7860"))
-INBROWSER = _env_bool("VDC_INBROWSER", True)
+_INBROWSER_DEFAULT = os.environ.get("VDC_RESTART") != "1"
+INBROWSER = _env_bool("VDC_INBROWSER", _INBROWSER_DEFAULT)
 SHARE = _env_bool("VDC_SHARE", False)
 
 
@@ -74,7 +76,12 @@ def _asyncio_exception_handler(loop, context):
     loop.default_exception_handler(context)
 
 
-asyncio.get_event_loop().set_exception_handler(_asyncio_exception_handler)
+try:
+    loop = asyncio.get_event_loop()
+except RuntimeError:
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+loop.set_exception_handler(_asyncio_exception_handler)
 
 manager = ModelManager()
 logger.info("VoiceDesignCloner starting (backend=%s)", manager.backend)
@@ -87,15 +94,15 @@ with gr.Blocks(title="VoiceDesignCloner", theme="NoCrypt/miku") as demo:
     gr.Markdown("# VoiceDesignCloner")
 
     with gr.Tabs():
-        with gr.Tab("Voice Design"):
+        with gr.Tab(t("tab_voice_design")):
             build_voice_design_tab(manager)
-        with gr.Tab("Voice Clone"):
+        with gr.Tab(t("tab_voice_clone")):
             build_voice_clone_tab(manager)
-        with gr.Tab("Tools"):
+        with gr.Tab(t("tab_tools")):
             build_tools_tab()
-        with gr.Tab("Settings"):
+        with gr.Tab(t("tab_settings")):
             build_settings_tab(manager)
-        with gr.Tab("Manual"):
+        with gr.Tab(t("tab_manual")):
             build_manual_tab()
 
 demo.queue(default_concurrency_limit=1)

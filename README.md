@@ -7,6 +7,8 @@
 [Qwen3-TTS](https://huggingface.co/Qwen/Qwen3-TTS) の VoiceDesign と VoiceClone を GUI で操作できるツールです。
 声の設計から [Style-Bert-VITS2](https://github.com/litagin02/Style-Bert-VITS2) の学習に必要な教師データ作成まで、一気通貫で完結します。
 
+**UI表示・梱包コーパス・音声生成言語をワンクリックで切り替え — JA / EN / ZH / KO 対応**
+
 ---
 
 ## 概要
@@ -32,7 +34,7 @@
 
 ## スクリーンショット
 
-![screenshot](assets/スクリーンショット%202026-04-01%20210218.png)
+![screenshot](assets/screenshot1.png)
 
 ---
 
@@ -188,6 +190,12 @@ pkill -f "python app.py" || true
 pkill -f "cloudflared tunnel --url http://127.0.0.1:7860" || true
 ```
 
+**言語切替 (日本語 / English / 中文 / 한국어) について**
+
+- UI 上の **設定タブ** から表示言語を切り替えられます。切替後、アプリが自動で再起動します (このとき `VDC_RESTART=1` が設定され、ブラウザは再オープンしません)
+- Colab 上でも、新しいプロセスが同じ 7860 ポートで再起動するため、Cloudflared の Public URL はそのまま使えます (1〜2 秒ほどトンネルが一時切断される場合があります。画面をリロードしてください)
+- 設定は `config.json` に保存されますが、Colab のランタイム再接続時には初期化されることがあります
+
 ---
 
 ## 使い方
@@ -209,6 +217,47 @@ pkill -f "cloudflared tunnel --url http://127.0.0.1:7860" || true
 
 ---
 
+## 対応言語
+
+### UI言語
+
+設定タブから切り替え可能です。
+
+| 言語 | コード |
+|---|---|
+| 日本語 | JA |
+| 英語 | EN |
+| 中国語 | ZH |
+| 韓国語 | KO |
+
+### 音声生成言語（Qwen3-TTS）
+
+ボイスデザイン・ボイスクローンともに以下の10言語に対応しています。
+梱包コーパス（JA/EN/ZH）を使う場合はコーパス言語セレクタで自動連動します。
+自前コーパスを持ち込む場合は、上記10言語すべてで生成できます。
+
+| 言語 | 言語 |
+|---|---|
+| 日本語 (Japanese) | 韓国語 (Korean) |
+| 英語 (English) | ドイツ語 (German) |
+| 中国語 (Chinese) | フランス語 (French) |
+| スペイン語 (Spanish) | イタリア語 (Italian) |
+| ポルトガル語 (Portuguese) | ロシア語 (Russian) |
+
+---
+
+## 梱包コーパスについて
+
+| ファイル | 文数 | 内容 |
+|---|---|---|
+| ita_emotion100.txt | 100文 | ITAコーパス（感情表現） |
+| ita_recitation324.txt | 324文 | ITAコーパス（朗読） |
+| mana652.txt | 652文 | MANAコーパス |
+| rohan4600.txt | 4600文 | ROHANコーパス |
+
+日本語（JA）は原文そのままを収録。英語（EN）・中国語（ZH）は M2M-100 によるオフライン翻訳後、モデルのループ出力・未知語トークン（`<unk>`）をすべて手動で修正済みです。
+
+---
 ## Style-Bert-VITS2 への受け渡し
 
 ```
@@ -223,7 +272,7 @@ esd.list の形式：
 0002.wav|{話者名}|JP|テキスト内容
 ```
 
-> **注意**: 言語列は `JP` 固定です。梱包コーパスはすべて日本語を前提としています。
+> **注意**: 言語列は Tools タブで JP / EN / ZH から選択できます。
 
 ---
 
