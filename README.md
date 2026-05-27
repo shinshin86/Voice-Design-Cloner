@@ -98,8 +98,9 @@ Colab ノートブック自体は同梱していませんが、以下のセル�
 - Colab のランタイムは **GPU** を選択してください
 - 初回は Hugging Face からモデルをダウンロードするため時間がかかります
 - Cloudflared の Quick Tunnel は **開発・検証用** です
+- **LoRA / Irodori 推論タブ** を使う場合は、別途 Irodori-TTS のセットアップが必要です（後述の **1b**）。VoiceDesign / VoiceClone だけ使うなら **1b** はスキップして構いません
 
-**1. セットアップ**
+**1a. 基本セットアップ（Qwen3-TTS バックエンド）**
 
 ```bash
 %%bash
@@ -112,7 +113,7 @@ fi
 cd /content/Voice-Design-Cloner
 
 apt-get update
-apt-get install -y sox ffmpeg curl wget
+apt-get install -y sox ffmpeg curl wget git
 
 python -m pip install -U pip setuptools wheel
 
@@ -134,6 +135,38 @@ if [ ! -x /usr/local/bin/cloudflared ]; then
   chmod +x /usr/local/bin/cloudflared
 fi
 ```
+
+**1b. Irodori-TTS セットアップ（任意: LoRA / Irodori 推論を使う場合のみ）**
+
+Irodori-TTS は Qwen3-TTS と torch のバージョンが衝突するため、別 venv で動かす設計になっています。`setup.sh` と同じく `~/.vdc-engines/Irodori-TTS/` に独立した venv を作ります。
+
+- 所要時間: **uv sync で数分〜十数分** かかります（初回のみ）
+- ディスク: モデルキャッシュ込みで **10GB 以上** 必要です
+- Colab のランタイムが切断/再接続されると `/root/.vdc-engines/` は失われるため、セッションごとに再実行が必要です
+
+```bash
+%%bash
+set -euo pipefail
+
+if ! command -v nvidia-smi >/dev/null 2>&1; then
+  echo "[SKIP] No GPU detected. Irodori-TTS requires a GPU."
+  exit 0
+fi
+
+IRODORI_ROOT="$HOME/.vdc-engines/Irodori-TTS"
+mkdir -p "$HOME/.vdc-engines"
+
+if [ ! -d "$IRODORI_ROOT" ]; then
+  git clone https://github.com/Aratako/Irodori-TTS.git "$IRODORI_ROOT"
+fi
+
+pip install -U uv
+(cd "$IRODORI_ROOT" && uv sync --extra cu128)
+
+echo "[OK] Irodori-TTS installed at $IRODORI_ROOT"
+```
+
+> セットアップ成功後は、WebUI 起動後の **設定タブ** で backend を **Irodori-TTS** に切り替えると、LoRA / Irodori 推論タブが利用できるようになります。
 
 **2. WebUI 起動 + Cloudflared 公開**
 
