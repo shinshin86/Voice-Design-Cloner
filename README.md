@@ -129,10 +129,22 @@ cd /content/Voice-Design-Cloner
 apt-get update
 apt-get install -y sox ffmpeg curl wget git
 
-python -m pip install -U pip setuptools wheel
+# torch 2.11+cu128 が setuptools 82+ と非互換のためピン
+python -m pip install -U pip wheel "setuptools<82"
 
 if command -v nvidia-smi >/dev/null 2>&1; then
-  pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu118
+  # setup.sh と同じく GPU 名から CUDA ビルドを自動選択。
+  # 環境変数 VDC_TORCH_CUDA で上書き可（例: `%env VDC_TORCH_CUDA=cu128` を別セルで実行）
+  GPU_NAME=$(nvidia-smi --query-gpu=name --format=csv,noheader 2>/dev/null | head -n 1)
+  TORCH_CUDA="${VDC_TORCH_CUDA:-}"
+  if [ -z "$TORCH_CUDA" ]; then
+    case "$GPU_NAME" in
+      *"RTX 50"*|*"RTX PRO 50"*|*"RTX 5070"*|*"RTX 5080"*|*"RTX 5090"*) TORCH_CUDA="cu128" ;;
+      *) TORCH_CUDA="cu118" ;;
+    esac
+  fi
+  echo "[INFO] GPU: ${GPU_NAME:-unknown}, PyTorch build: $TORCH_CUDA"
+  pip install torch torchaudio --index-url "https://download.pytorch.org/whl/$TORCH_CUDA"
 else
   pip install torch torchaudio --index-url https://download.pytorch.org/whl/cpu
 fi
