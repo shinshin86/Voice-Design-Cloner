@@ -10,6 +10,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         # ── Tab names ──
         "tab_voice_design": "ボイスデザイン",
         "tab_voice_clone": "ボイスクローン",
+        "tab_lora": "LoRA学習",
+        "tab_irodori_infer": "Irodori推論",
         "tab_tools": "ツール",
         "tab_settings": "設定",
         "tab_manual": "マニュアル",
@@ -142,19 +144,73 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings_lang_saved": "言語を {} に設定しました。再起動すると反映されます。",
         "settings_lang_save_fail": "エラー: {}",
         "settings_backend_section": "### 推論バックエンド",
-        "settings_backend_desc": "**faster**: CUDA Graph高速化（6-10倍速、GPU専用）\n\n**standard**: 標準推論（CPU/GPU両対応）",
+        "settings_backend_desc": "**faster**: Qwen3-TTS の CUDA Graph 高速化（6-10倍速、GPU専用）\n\n**Qwen3-TTS**: 標準推論（CPU/GPU両対応）\n\n**Irodori-TTS**: 日本語特化の48kHz拡散モデル（GPU必須）",
         "settings_backend_label": "バックエンド",
         "settings_backend_status_label": "ステータス",
         "settings_backend_current": "現在: {}",
         "settings_backend_no_faster": "（faster未インストール）",
         "settings_backend_err": "エラー: {}",
+        "settings_backend_restart": "バックエンドを切り替えました。再起動中...",
         "settings_sysinfo_section": "### システム情報",
         "settings_gpu_label": "GPU",
         "settings_vram_label": "VRAM",
         "settings_faster_label": "faster-qwen3-tts",
         "settings_faster_installed": "インストール済み",
         "settings_faster_not_installed": "未インストール（pip install faster-qwen3-tts）",
+        "settings_irodori_installed": "インストール済み",
+        "settings_irodori_not_installed": "未インストール（setup.bat を再実行してください）",
         "settings_btn_refresh": "更新",
+        # ── Voice Clone: LoRA + auto-train ──
+        "vc_lora_label": "LoRA アダプタ",
+        "vc_btn_lora_refresh": "更新",
+        "vc_autotrain_section": "### LoRA 自動学習",
+        "vc_autotrain_label": "クローン完了後にLoRA学習を実行",
+        "vc_autotrain_done": "LoRA学習完了!",
+        # ── LoRA tab ──
+        "lora_source_section": "### 1. 学習データ（クローン出力）",
+        "lora_source_label": "出力フォルダ",
+        "lora_settings_section": "### 2. 学習設定",
+        "lora_speaker_label": "話者名（LoRA識別子）",
+        "lora_steps_label": "学習ステップ数",
+        "lora_advanced_section": "詳細設定",
+        "lora_steps_override_label": "ステップ数（プリセット上書き）",
+        "lora_batch_label": "バッチサイズ",
+        "lora_workers_label": "DataLoader workers",
+        "lora_lr_label": "学習率",
+        "lora_existing_section": "### 既存のLoRA",
+        "lora_existing_label": "保存済みLoRA一覧",
+        "lora_existing_none": "（まだありません）",
+        "lora_progress_section": "### 3. 進捗",
+        "lora_status_label": "ステータス",
+        "lora_log_label": "ログ",
+        "lora_btn_refresh": "更新",
+        "lora_btn_start": "学習開始",
+        "lora_btn_stop": "■ 停止",
+        "lora_irodori_only_note": "_LoRA学習はバックエンドが Irodori-TTS のときのみ利用できます。_",
+        "lora_err_not_irodori": "エラー: バックエンドを Irodori-TTS に切り替えてください",
+        "lora_err_no_source": "エラー: 学習データ（クローン出力フォルダ）を選択してください",
+        "lora_err_no_speaker": "エラー: 話者名を入力してください",
+        "lora_err_failed": "エラー: {}",
+        "lora_ok_done": "完了: speaker={} 出力先={}",
+        # ── Irodori Inference tab ──
+        "ii_ref_section": "### 1. 参照音声",
+        "ii_model_section": "### 2. LoRA",
+        "ii_text_section": "### 3. テキスト",
+        "ii_params_section": "### 4. パラメータ",
+        "ii_preview_section": "### 5. プレビュー",
+        "ii_save_section": "### 6. 保存",
+        "ii_caption_label": "キャプション（任意）",
+        "ii_caption_placeholder": "例: 落ち着いた女性の声で",
+        "ii_text_label": "読み上げテキスト（絵文字スタイル制御可）",
+        "ii_text_placeholder": "例: こんにちは。😆 はじめまして！",
+        "ii_seed_label": "シード（空でランダム）",
+        "ii_btn_seed_random": "ランダム",
+        "ii_irodori_only_note": "_Irodori推論はバックエンドが Irodori-TTS のときのみ利用できます。_",
+        "ii_err_not_irodori": "エラー: バックエンドを Irodori-TTS に切り替えてください",
+        "ii_err_no_ref": "エラー: 参照音声を選択してください",
+        "ii_err_ref_not_found": "エラー: 参照音声が見つかりません",
+        "ii_err_no_text": "エラー: テキストを入力してください",
+        "ii_emoji_palette_label": "絵文字スタイル制御（クリックでテキスト末尾に挿入）",
         # ── Manual tab ──
         "manual_intro": (
             "## VoiceDesignCloner とは\n\n"
@@ -223,16 +279,66 @@ _STRINGS: dict[str, dict[str, str]] = {
         "manual_settings": (
             "### 設定 タブ\n\n"
             "**バックエンド選択**\n\n"
-            "| バックエンド | 速度 | 対応モデル | 備考 |\n"
-            "|---|---|---|---|\n"
-            "| **faster** | 約6-10倍速（RTF ~2.0） | 1.7B-VoiceDesign / 1.7B-Base | GPU必須 |\n"
-            "| **standard** | 標準速度 | すべて | CPU/GPU両対応 |\n\n"
-            "**0.6B-Base は faster 非対応**です。\n\n"
+            "| バックエンド | エンジン | 速度 | 対応言語 | 備考 |\n"
+            "|---|---|---|---|---|\n"
+            "| **faster** | Qwen3-TTS | 約6-10倍速 | 10言語 | GPU必須・0.6B-Base非対応 |\n"
+            "| **Qwen3-TTS** | Qwen3-TTS | 標準速度 | 10言語 | CPU/GPU両対応 |\n"
+            "| **Irodori-TTS** | Irodori-TTS | 6-7秒/文 | 日本語のみ | GPU必須・48kHz拡散モデル |\n\n"
+            "バックエンドを切り替えるとアプリが自動再起動し、各タブのUIが対応する状態になります。\n\n"
             "**GPU 情報**\n\n"
             "現在使用中の GPU 名と VRAM 使用量をリアルタイムで確認できます。\n\n"
             "**表示言語**\n\n"
             "UI の表示言語を日本語 / 英語 / 中国語 / 韓国語から選択できます。\n"
             "「Apply & Restart」ボタンを押すとアプリが再起動し、選択した言語で表示されます。"
+        ),
+        "manual_irodori": (
+            "### Irodori-TTS について\n\n"
+            "[Irodori-TTS](https://github.com/Aratako/Irodori-TTS) は日本語特化の48kHz拡散ベースTTSモデルです。\n\n"
+            "**特徴**\n\n"
+            "- **48kHz・日本語特化**: Qwen3-TTSより高サンプルレートで日本語の自然さを重視\n"
+            "- **キャプション制御**: ボイスデザインでは「落ち着いた女性の声で」のような自然言語で声質を指示\n"
+            "- **ゼロショットクローン**: ボイスクローンでは参照音声1つから声色を再現（書き起こし不要）\n\n"
+            "**使い方**\n\n"
+            "1. 設定タブで **Irodori-TTS** を選択（自動再起動）\n"
+            "2. ボイスデザイン / ボイスクローンタブで通常通り使用\n"
+            "   - 日本語以外の言語、生成パラメータ、参照音声書き起こし等はロックされます\n"
+            "   - 内部的にデザインは `v2-VoiceDesign`、クローンは `v3` を使用\n\n"
+            "**初回起動時の注意**\n\n"
+            "- 初めて生成する時、Hugging Face からモデルを自動DLします（数百MB、5-10分程度）\n"
+            "- 以降はキャッシュから即起動\n\n"
+            "**インストール**\n\n"
+            "`setup.bat` / `setup.sh` 実行時に GPU が検出されると自動でインストールされます。\n"
+            "インストール先は `%USERPROFILE%\\.vdc-engines\\Irodori-TTS\\`（Linux: `~/.vdc-engines/`）。"
+        ),
+        "manual_lora": (
+            "### LoRA学習 タブ — 声を学習させる\n\n"
+            "ボイスクローン で生成した音声を使って Irodori-TTS の LoRA を学習します。\n"
+            "学習はvdc本体のバックエンドが何でも実行可能ですが、できあがったLoRAを使うには Irodori-TTS バックエンドが必要です。\n\n"
+            "1. **学習データ** にボイスクローンの出力フォルダを選択（`output/{フォルダ名}/raw/`）\n"
+            "2. **話者名** を入力（LoRAの識別子、後でクローンタブやIrodori推論タブでこの名前で選択可能）\n"
+            "3. **学習ステップ数** を選ぶ:\n"
+            "   - `quick (3000)`: お試し用、約20分（RTX 4060 Ti 目安）\n"
+            "   - `normal (10000)`: 標準\n"
+            "   - `full (30000)`: 本格学習\n"
+            "4. **詳細設定**（任意）: バッチサイズ、DataLoader workers、学習率を個別調整\n"
+            "5. **学習開始** → 自動的に `lab形式変換 → jsonl → 潜在エンコード → train.py --lora` の順に実行\n\n"
+            "**シームレス学習**: ボイスクローンタブで「クローン完了後にLoRA学習を実行」をONにすると、"
+            "クローン生成完了から学習までを一気通貫で実行できます。\n\n"
+            "**保存先**: `output/lora/{話者名}/` 配下に PEFT 形式のアダプタが保存されます。\n\n"
+            "**注意**: LoRAは「ベースモデル + 参照音声」の上に重ねる適応層なので、"
+            "推論時にも参照音声が必要です（Irodori推論タブではLoRA選択時に学習データから自動で1つピックされます）。"
+        ),
+        "manual_irodori_infer": (
+            "### Irodori推論 タブ — 学習済LoRAを試す\n\n"
+            "学習済LoRAを使って1文ずつ生成・確認・保存する対話的なプレイグラウンドです。\n"
+            "ボイスクローンタブ（一括生成）の前に、まずはここでLoRAの仕上がりを確認するのに便利。\n\n"
+            "1. **参照音声** を選択（ショートカット or アップロード）\n"
+            "   - LoRA選択時は学習データから自動で参照が設定されます（変更可）\n"
+            "2. **LoRA** を選択（学習済 or 「—」でLoRAなし＝ベースモデルのみ）\n"
+            "3. **テキスト** を入力（絵文字でスタイル制御可: 😆😢😱⏩🐢 等）\n"
+            "4. **シード** 任意（空ならランダム、固定すると再現可能）\n"
+            "5. **生成** → プレビュー → 気に入ったら **保存名** を付けて保存\n\n"
+            "保存先: `output/irodori_infer/{保存名}.wav`"
         ),
     },
     "en": {
@@ -241,6 +347,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         # ── Tab names ──
         "tab_voice_design": "Voice Design",
         "tab_voice_clone": "Voice Clone",
+        "tab_lora": "LoRA",
+        "tab_irodori_infer": "Irodori Infer",
         "tab_tools": "Tools",
         "tab_settings": "Settings",
         "tab_manual": "Manual",
@@ -373,19 +481,73 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings_lang_saved": "Language set to {}. Restart to apply.",
         "settings_lang_save_fail": "Error: {}",
         "settings_backend_section": "### Inference Backend",
-        "settings_backend_desc": "**faster**: CUDA Graph acceleration (6-10x, GPU only)\n\n**standard**: Standard inference (CPU/GPU)",
+        "settings_backend_desc": "**faster**: Qwen3-TTS with CUDA Graph (6-10x, GPU only)\n\n**Qwen3-TTS**: Standard inference (CPU/GPU)\n\n**Irodori-TTS**: Japanese-only 48kHz diffusion model (GPU required)",
         "settings_backend_label": "Backend",
         "settings_backend_status_label": "Status",
         "settings_backend_current": "Current: {}",
         "settings_backend_no_faster": " (faster not installed)",
         "settings_backend_err": "Error: {}",
+        "settings_backend_restart": "Backend switched. Restarting...",
         "settings_sysinfo_section": "### System Info",
         "settings_gpu_label": "GPU",
         "settings_vram_label": "VRAM",
         "settings_faster_label": "faster-qwen3-tts",
         "settings_faster_installed": "Installed",
         "settings_faster_not_installed": "Not installed (pip install faster-qwen3-tts)",
+        "settings_irodori_installed": "Installed",
+        "settings_irodori_not_installed": "Not installed (re-run setup.bat)",
         "settings_btn_refresh": "Refresh",
+        # ── Voice Clone: LoRA + auto-train ──
+        "vc_lora_label": "LoRA adapter",
+        "vc_btn_lora_refresh": "Refresh",
+        "vc_autotrain_section": "### LoRA auto-train",
+        "vc_autotrain_label": "Train a LoRA after the clone finishes",
+        "vc_autotrain_done": "LoRA training complete!",
+        # ── LoRA tab ──
+        "lora_source_section": "### 1. Training data (clone output)",
+        "lora_source_label": "Output folder",
+        "lora_settings_section": "### 2. Training settings",
+        "lora_speaker_label": "Speaker name (LoRA id)",
+        "lora_steps_label": "Training steps",
+        "lora_advanced_section": "Advanced",
+        "lora_steps_override_label": "Steps (override preset)",
+        "lora_batch_label": "Batch size",
+        "lora_workers_label": "DataLoader workers",
+        "lora_lr_label": "Learning rate",
+        "lora_existing_section": "### Existing LoRAs",
+        "lora_existing_label": "Saved LoRAs",
+        "lora_existing_none": "(none yet)",
+        "lora_progress_section": "### 3. Progress",
+        "lora_status_label": "Status",
+        "lora_log_label": "Log",
+        "lora_btn_refresh": "Refresh",
+        "lora_btn_start": "Start training",
+        "lora_btn_stop": "■ Stop",
+        "lora_irodori_only_note": "_LoRA training is only available when the Irodori-TTS backend is selected._",
+        "lora_err_not_irodori": "Error: switch backend to Irodori-TTS first",
+        "lora_err_no_source": "Error: select a clone output folder",
+        "lora_err_no_speaker": "Error: enter a speaker name",
+        "lora_err_failed": "Error: {}",
+        "lora_ok_done": "Done: speaker={} output={}",
+        # ── Irodori Inference tab ──
+        "ii_ref_section": "### 1. Reference voice",
+        "ii_model_section": "### 2. LoRA",
+        "ii_text_section": "### 3. Text",
+        "ii_params_section": "### 4. Parameters",
+        "ii_preview_section": "### 5. Preview",
+        "ii_save_section": "### 6. Save",
+        "ii_caption_label": "Caption (optional)",
+        "ii_caption_placeholder": "e.g. A calm female voice",
+        "ii_text_label": "Text to speak (emoji style control supported)",
+        "ii_text_placeholder": "e.g. Hello. 😆 Nice to meet you!",
+        "ii_seed_label": "Seed (empty = random)",
+        "ii_btn_seed_random": "Random",
+        "ii_irodori_only_note": "_Irodori Inference is only available when the Irodori-TTS backend is selected._",
+        "ii_err_not_irodori": "Error: switch backend to Irodori-TTS first",
+        "ii_err_no_ref": "Error: select a reference voice",
+        "ii_err_ref_not_found": "Error: reference voice not found",
+        "ii_err_no_text": "Error: enter some text",
+        "ii_emoji_palette_label": "Emoji style control (click to append to text)",
         # ── Manual tab ──
         "manual_intro": (
             "## What is VoiceDesignCloner?\n\n"
@@ -454,16 +616,66 @@ _STRINGS: dict[str, dict[str, str]] = {
         "manual_settings": (
             "### Settings Tab\n\n"
             "**Backend**\n\n"
-            "| Backend | Speed | Models | Notes |\n"
-            "|---|---|---|---|\n"
-            "| **faster** | ~6-10x (RTF ~2.0) | 1.7B-VoiceDesign / 1.7B-Base | GPU required |\n"
-            "| **standard** | Normal | All | CPU/GPU |\n\n"
-            "**0.6B-Base does not support faster** — auto falls back to standard.\n\n"
+            "| Backend | Engine | Speed | Languages | Notes |\n"
+            "|---|---|---|---|---|\n"
+            "| **faster** | Qwen3-TTS | ~6-10x | 10 langs | GPU required, 0.6B-Base unsupported |\n"
+            "| **Qwen3-TTS** | Qwen3-TTS | Normal | 10 langs | CPU/GPU |\n"
+            "| **Irodori-TTS** | Irodori-TTS | ~6-7s/sentence | Japanese only | GPU required, 48kHz diffusion |\n\n"
+            "Switching backends auto-restarts the app so each tab renders with the appropriate lock state.\n\n"
             "**GPU Info**\n\n"
             "Displays the current GPU name and real-time VRAM usage.\n\n"
             "**Display Language**\n\n"
             "Switch the UI language between Japanese, English, Chinese, and Korean.\n"
             "Click \"Apply & Restart\" to relaunch the app in the selected language."
+        ),
+        "manual_irodori": (
+            "### About Irodori-TTS\n\n"
+            "[Irodori-TTS](https://github.com/Aratako/Irodori-TTS) is a Japanese-specialized 48kHz diffusion TTS model.\n\n"
+            "**Features**\n\n"
+            "- **48kHz / Japanese-specialized**: higher sample rate than Qwen3-TTS, focused on natural Japanese\n"
+            "- **Caption control**: in Voice Design, describe the voice in natural language (e.g. \"a calm female voice\")\n"
+            "- **Zero-shot clone**: in Voice Clone, mimics a voice from one reference audio (no transcript needed)\n\n"
+            "**Usage**\n\n"
+            "1. Select **Irodori-TTS** in the Settings tab (auto-restarts)\n"
+            "2. Use the Voice Design / Voice Clone tabs as usual\n"
+            "   - Non-Japanese languages, sampling parameters, and reference transcript are locked\n"
+            "   - Internally Design uses `v2-VoiceDesign`, Clone uses `v3`\n\n"
+            "**First-run note**\n\n"
+            "- The first generation downloads checkpoints from Hugging Face (~ a few hundred MB, ~5-10 min)\n"
+            "- Subsequent runs load from cache instantly\n\n"
+            "**Installation**\n\n"
+            "`setup.bat` / `setup.sh` installs Irodori-TTS automatically when a GPU is detected.\n"
+            "It is placed under `%USERPROFILE%\\.vdc-engines\\Irodori-TTS\\` (Linux: `~/.vdc-engines/`)."
+        ),
+        "manual_lora": (
+            "### LoRA Tab — Train a Voice\n\n"
+            "Fine-tunes Irodori-TTS with a LoRA adapter using audio generated by the Voice Clone tab.\n"
+            "Training runs regardless of the active backend, but the resulting LoRA can only be used with the Irodori-TTS backend.\n\n"
+            "1. Pick a **clone output folder** (`output/{folder}/raw/`)\n"
+            "2. Enter a **speaker name** (used as the LoRA id; will appear in Voice Clone and Irodori Inference tabs)\n"
+            "3. Choose **steps**:\n"
+            "   - `quick (3000)` — try-out, ~20 min on an RTX 4060 Ti\n"
+            "   - `normal (10000)` — standard\n"
+            "   - `full (30000)` — full training\n"
+            "4. **Advanced** (optional): override batch size, DataLoader workers, learning rate\n"
+            "5. **Start** → runs `lab convert → jsonl → encode latents → train.py --lora` end-to-end\n\n"
+            "**Seamless training**: enabling \"train a LoRA after clone\" on the Voice Clone tab "
+            "chains clone generation directly into LoRA training.\n\n"
+            "**Output**: PEFT adapter under `output/lora/{speaker}/`.\n\n"
+            "**Note**: a LoRA layers on top of base model + reference audio, so inference still needs a reference. "
+            "The Irodori Inference tab auto-picks one from the training data when you select a LoRA."
+        ),
+        "manual_irodori_infer": (
+            "### Irodori Inference Tab — Try out a LoRA\n\n"
+            "Interactive playground for testing a trained LoRA one line at a time. "
+            "Useful for previewing a LoRA before running a full corpus batch in the Voice Clone tab.\n\n"
+            "1. Pick a **reference voice** (shortcut or upload)\n"
+            "   - Selecting a LoRA auto-fills a sample from its training data (can be replaced)\n"
+            "2. Pick a **LoRA** (trained adapter or \"—\" for base-only)\n"
+            "3. Enter **text** (emoji style control supported: 😆😢😱⏩🐢 etc.)\n"
+            "4. **Seed** is optional — empty for random, fixed for reproducibility\n"
+            "5. **Generate** → preview → name and save\n\n"
+            "Output: `output/irodori_infer/{name}.wav`"
         ),
     },
     "zh": {
@@ -472,6 +684,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         # ── Tab names ──
         "tab_voice_design": "声音设计",
         "tab_voice_clone": "声音克隆",
+        "tab_lora": "LoRA训练",
+        "tab_irodori_infer": "Irodori 推理",
         "tab_tools": "工具",
         "tab_settings": "设置",
         "tab_manual": "手册",
@@ -604,19 +818,73 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings_lang_saved": "语言已设置为 {}。重启后生效。",
         "settings_lang_save_fail": "错误: {}",
         "settings_backend_section": "### 推理后端",
-        "settings_backend_desc": "**faster**: CUDA Graph加速（6-10倍速，仅GPU）\n\n**standard**: 标准推理（CPU/GPU均可）",
+        "settings_backend_desc": "**faster**: Qwen3-TTS 的 CUDA Graph 加速（6-10倍速，仅GPU）\n\n**Qwen3-TTS**: 标准推理（CPU/GPU均可）\n\n**Irodori-TTS**: 日语专用48kHz扩散模型（需GPU）",
         "settings_backend_label": "后端",
         "settings_backend_status_label": "状态",
         "settings_backend_current": "当前: {}",
         "settings_backend_no_faster": "（faster未安装）",
         "settings_backend_err": "错误: {}",
+        "settings_backend_restart": "后端已切换，正在重启...",
         "settings_sysinfo_section": "### 系统信息",
         "settings_gpu_label": "GPU",
         "settings_vram_label": "显存",
         "settings_faster_label": "faster-qwen3-tts",
         "settings_faster_installed": "已安装",
         "settings_faster_not_installed": "未安装（pip install faster-qwen3-tts）",
+        "settings_irodori_installed": "已安装",
+        "settings_irodori_not_installed": "未安装（请重新运行 setup.bat）",
         "settings_btn_refresh": "刷新",
+        # ── 克隆: LoRA + 自动训练 ──
+        "vc_lora_label": "LoRA 适配器",
+        "vc_btn_lora_refresh": "刷新",
+        "vc_autotrain_section": "### LoRA 自动训练",
+        "vc_autotrain_label": "克隆完成后自动训练 LoRA",
+        "vc_autotrain_done": "LoRA 训练完成!",
+        # ── LoRA 标签 ──
+        "lora_source_section": "### 1. 训练数据（克隆输出）",
+        "lora_source_label": "输出文件夹",
+        "lora_settings_section": "### 2. 训练设置",
+        "lora_speaker_label": "说话人名称（LoRA 标识）",
+        "lora_steps_label": "训练步数",
+        "lora_advanced_section": "高级设置",
+        "lora_steps_override_label": "步数（覆盖预设）",
+        "lora_batch_label": "批次大小",
+        "lora_workers_label": "DataLoader workers",
+        "lora_lr_label": "学习率",
+        "lora_existing_section": "### 已有的 LoRA",
+        "lora_existing_label": "已保存的 LoRA 列表",
+        "lora_existing_none": "（暂无）",
+        "lora_progress_section": "### 3. 进度",
+        "lora_status_label": "状态",
+        "lora_log_label": "日志",
+        "lora_btn_refresh": "刷新",
+        "lora_btn_start": "开始训练",
+        "lora_btn_stop": "■ 停止",
+        "lora_irodori_only_note": "_仅在后端为 Irodori-TTS 时可用 LoRA 训练。_",
+        "lora_err_not_irodori": "错误: 请先切换到 Irodori-TTS 后端",
+        "lora_err_no_source": "错误: 请选择训练数据（克隆输出文件夹）",
+        "lora_err_no_speaker": "错误: 请输入说话人名称",
+        "lora_err_failed": "错误: {}",
+        "lora_ok_done": "完成: speaker={} 输出={}",
+        # ── Irodori 推理标签 ──
+        "ii_ref_section": "### 1. 参考音频",
+        "ii_model_section": "### 2. LoRA",
+        "ii_text_section": "### 3. 文本",
+        "ii_params_section": "### 4. 参数",
+        "ii_preview_section": "### 5. 预览",
+        "ii_save_section": "### 6. 保存",
+        "ii_caption_label": "Caption（可选）",
+        "ii_caption_placeholder": "例: 平静的女声",
+        "ii_text_label": "朗读文本（支持 emoji 风格控制）",
+        "ii_text_placeholder": "例: 你好。😆 初次见面！",
+        "ii_seed_label": "种子（留空 = 随机）",
+        "ii_btn_seed_random": "随机",
+        "ii_irodori_only_note": "_仅当后端为 Irodori-TTS 时可用。_",
+        "ii_err_not_irodori": "错误: 请先切换到 Irodori-TTS 后端",
+        "ii_err_no_ref": "错误: 请选择参考音频",
+        "ii_err_ref_not_found": "错误: 找不到参考音频",
+        "ii_err_no_text": "错误: 请输入文本",
+        "ii_emoji_palette_label": "Emoji 风格控制（点击追加到文本末尾）",
         # ── Manual tab ──
         "manual_intro": (
             "## 什么是 VoiceDesignCloner？\n\n"
@@ -684,16 +952,59 @@ _STRINGS: dict[str, dict[str, str]] = {
         "manual_settings": (
             "### 设置 标签\n\n"
             "**推理后端**\n\n"
-            "| 后端 | 速度 | 支持模型 | 备注 |\n"
-            "|---|---|---|---|\n"
-            "| **faster** | ~6-10倍速 | 1.7B-VoiceDesign / 1.7B-Base | 需要GPU |\n"
-            "| **standard** | 标准速度 | 全部 | CPU/GPU均可 |\n\n"
-            "**0.6B-Base 不支持faster**，会自动回退到standard。\n\n"
+            "| 后端 | 引擎 | 速度 | 支持语言 | 备注 |\n"
+            "|---|---|---|---|---|\n"
+            "| **faster** | Qwen3-TTS | ~6-10倍速 | 10种 | 需GPU，0.6B-Base不支持 |\n"
+            "| **Qwen3-TTS** | Qwen3-TTS | 标准速度 | 10种 | CPU/GPU均可 |\n"
+            "| **Irodori-TTS** | Irodori-TTS | 6-7秒/句 | 仅日语 | 需GPU，48kHz扩散模型 |\n\n"
+            "切换后端会自动重启应用，各标签会根据所选后端进入相应锁定状态。\n\n"
             "**GPU信息**\n\n"
             "可实时查看当前使用的GPU名称和显存占用情况。\n\n"
             "**显示语言**\n\n"
             "可在日语、英语、中文、韩语之间切换UI显示语言。\n"
             "点击「Apply & Restart」重启应用，以所选语言显示。"
+        ),
+        "manual_irodori": (
+            "### 关于 Irodori-TTS\n\n"
+            "[Irodori-TTS](https://github.com/Aratako/Irodori-TTS) 是一个日语专用的48kHz扩散TTS模型。\n\n"
+            "**特点**\n\n"
+            "- **48kHz・日语专用**：比 Qwen3-TTS 更高的采样率，注重日语自然度\n"
+            "- **Caption 控制**：在声音设计中用自然语言描述声音（如「平静的女声」）\n"
+            "- **零样本克隆**：在声音克隆中通过一段参考音频复制声色（无需转录）\n\n"
+            "**用法**\n\n"
+            "1. 在设置标签选择 **Irodori-TTS**（会自动重启）\n"
+            "2. 在声音设计 / 声音克隆标签中照常使用\n"
+            "   - 非日语、生成参数、参考音频转录等会被锁定\n"
+            "   - 内部：设计使用 `v2-VoiceDesign`，克隆使用 `v3`\n\n"
+            "**首次运行注意**\n\n"
+            "- 首次生成时会从 Hugging Face 自动下载模型（数百 MB，约5-10分钟）\n"
+            "- 之后从缓存即时加载\n\n"
+            "**安装**\n\n"
+            "运行 `setup.bat` / `setup.sh` 时，检测到 GPU 会自动安装 Irodori-TTS。\n"
+            "安装路径：`%USERPROFILE%\\.vdc-engines\\Irodori-TTS\\`（Linux：`~/.vdc-engines/`）。"
+        ),
+        "manual_lora": (
+            "### LoRA训练 标签 — 训练声音\n\n"
+            "使用声音克隆生成的音频对 Irodori-TTS 进行 LoRA 微调。\n"
+            "训练本身在任何后端下都可运行，但训练好的 LoRA 只能在 Irodori-TTS 后端使用。\n\n"
+            "1. 选择**克隆输出文件夹**（`output/{文件夹}/raw/`）\n"
+            "2. 输入**说话人名称**（作为 LoRA 标识符）\n"
+            "3. 选择**步数**：`quick (3000)` / `normal (10000)` / `full (30000)`\n"
+            "4. **高级设置**（可选）：批次大小、DataLoader workers、学习率\n"
+            "5. **开始训练** → 自动执行 `lab格式转换 → jsonl → 潜在编码 → train.py --lora`\n\n"
+            "**无缝训练**：在声音克隆标签开启「克隆完成后训练 LoRA」即可一气呵成。\n\n"
+            "**输出**：`output/lora/{说话人}/`。\n\n"
+            "**注意**：LoRA 是叠加在基础模型+参考音频上的适配层，推理时仍需要参考音频。"
+        ),
+        "manual_irodori_infer": (
+            "### Irodori推理 标签 — 试用 LoRA\n\n"
+            "用训练好的 LoRA 逐句生成、试听、保存的交互式调试环境。\n\n"
+            "1. 选择**参考音频**（快捷或上传，选择 LoRA 时自动填充）\n"
+            "2. 选择 **LoRA**（或选 \"—\" 仅使用基础模型）\n"
+            "3. 输入**文本**（支持 emoji 风格控制）\n"
+            "4. **种子** 可选，留空为随机\n"
+            "5. **生成** → 预览 → 命名保存\n\n"
+            "输出：`output/irodori_infer/{名称}.wav`"
         ),
     },
     "ko": {
@@ -702,6 +1013,8 @@ _STRINGS: dict[str, dict[str, str]] = {
         # ── Tab names ──
         "tab_voice_design": "보이스 디자인",
         "tab_voice_clone": "보이스 클론",
+        "tab_lora": "LoRA 학습",
+        "tab_irodori_infer": "Irodori 추론",
         "tab_tools": "도구",
         "tab_settings": "설정",
         "tab_manual": "매뉴얼",
@@ -834,19 +1147,73 @@ _STRINGS: dict[str, dict[str, str]] = {
         "settings_lang_saved": "언어를 {} 로 설정했습니다. 재시작하면 적용됩니다.",
         "settings_lang_save_fail": "오류: {}",
         "settings_backend_section": "### 추론 백엔드",
-        "settings_backend_desc": "**faster**: CUDA Graph 가속 (6-10배 속도, GPU 전용)\n\n**standard**: 표준 추론 (CPU/GPU 모두 지원)",
+        "settings_backend_desc": "**faster**: Qwen3-TTS의 CUDA Graph 가속 (6-10배 속도, GPU 전용)\n\n**Qwen3-TTS**: 표준 추론 (CPU/GPU 모두 지원)\n\n**Irodori-TTS**: 일본어 전용 48kHz 확산 모델 (GPU 필수)",
         "settings_backend_label": "백엔드",
         "settings_backend_status_label": "상태",
         "settings_backend_current": "현재: {}",
         "settings_backend_no_faster": " (faster 미설치)",
         "settings_backend_err": "오류: {}",
+        "settings_backend_restart": "백엔드를 전환했습니다. 재시작 중...",
         "settings_sysinfo_section": "### 시스템 정보",
         "settings_gpu_label": "GPU",
         "settings_vram_label": "VRAM",
         "settings_faster_label": "faster-qwen3-tts",
         "settings_faster_installed": "설치됨",
         "settings_faster_not_installed": "미설치 (pip install faster-qwen3-tts)",
+        "settings_irodori_installed": "설치됨",
+        "settings_irodori_not_installed": "미설치 (setup.bat 다시 실행)",
         "settings_btn_refresh": "새로고침",
+        # ── 보이스 클론: LoRA + 자동 학습 ──
+        "vc_lora_label": "LoRA 어댑터",
+        "vc_btn_lora_refresh": "새로고침",
+        "vc_autotrain_section": "### LoRA 자동 학습",
+        "vc_autotrain_label": "클론 완료 후 LoRA 학습 실행",
+        "vc_autotrain_done": "LoRA 학습 완료!",
+        # ── LoRA 탭 ──
+        "lora_source_section": "### 1. 학습 데이터 (클론 출력)",
+        "lora_source_label": "출력 폴더",
+        "lora_settings_section": "### 2. 학습 설정",
+        "lora_speaker_label": "화자 이름 (LoRA 식별자)",
+        "lora_steps_label": "학습 스텝 수",
+        "lora_advanced_section": "고급 설정",
+        "lora_steps_override_label": "스텝 수 (프리셋 덮어쓰기)",
+        "lora_batch_label": "배치 사이즈",
+        "lora_workers_label": "DataLoader workers",
+        "lora_lr_label": "학습률",
+        "lora_existing_section": "### 기존 LoRA",
+        "lora_existing_label": "저장된 LoRA 목록",
+        "lora_existing_none": "(아직 없음)",
+        "lora_progress_section": "### 3. 진행 상황",
+        "lora_status_label": "상태",
+        "lora_log_label": "로그",
+        "lora_btn_refresh": "새로고침",
+        "lora_btn_start": "학습 시작",
+        "lora_btn_stop": "■ 정지",
+        "lora_irodori_only_note": "_LoRA 학습은 Irodori-TTS 백엔드일 때만 사용 가능합니다._",
+        "lora_err_not_irodori": "오류: 백엔드를 Irodori-TTS 로 전환해 주세요",
+        "lora_err_no_source": "오류: 학습 데이터 (클론 출력 폴더)를 선택해 주세요",
+        "lora_err_no_speaker": "오류: 화자 이름을 입력해 주세요",
+        "lora_err_failed": "오류: {}",
+        "lora_ok_done": "완료: speaker={} 출력={}",
+        # ── Irodori 추론 탭 ──
+        "ii_ref_section": "### 1. 참조 음성",
+        "ii_model_section": "### 2. LoRA",
+        "ii_text_section": "### 3. 텍스트",
+        "ii_params_section": "### 4. 파라미터",
+        "ii_preview_section": "### 5. 미리듣기",
+        "ii_save_section": "### 6. 저장",
+        "ii_caption_label": "캡션 (선택)",
+        "ii_caption_placeholder": "예: 차분한 여성 목소리",
+        "ii_text_label": "읽을 텍스트 (이모지 스타일 제어 지원)",
+        "ii_text_placeholder": "예: 안녕하세요. 😆 반갑습니다!",
+        "ii_seed_label": "시드 (비우면 랜덤)",
+        "ii_btn_seed_random": "랜덤",
+        "ii_irodori_only_note": "_Irodori 추론은 Irodori-TTS 백엔드일 때만 사용할 수 있습니다._",
+        "ii_err_not_irodori": "오류: 백엔드를 Irodori-TTS 로 전환해 주세요",
+        "ii_err_no_ref": "오류: 참조 음성을 선택해 주세요",
+        "ii_err_ref_not_found": "오류: 참조 음성을 찾을 수 없습니다",
+        "ii_err_no_text": "오류: 텍스트를 입력해 주세요",
+        "ii_emoji_palette_label": "이모지 스타일 제어 (클릭하여 텍스트 끝에 추가)",
         # ── Manual tab ──
         "manual_intro": (
             "## VoiceDesignCloner 란?\n\n"
@@ -915,16 +1282,59 @@ _STRINGS: dict[str, dict[str, str]] = {
         "manual_settings": (
             "### 설정 탭\n\n"
             "**추론 백엔드**\n\n"
-            "| 백엔드 | 속도 | 지원 모델 | 비고 |\n"
-            "|---|---|---|---|\n"
-            "| **faster** | ~6-10배 속도 (RTF ~2.0) | 1.7B-VoiceDesign / 1.7B-Base | GPU 필수 |\n"
-            "| **standard** | 표준 속도 | 전체 | CPU/GPU 모두 지원 |\n\n"
-            "**0.6B-Base 는 faster 미지원**입니다.\n\n"
+            "| 백엔드 | 엔진 | 속도 | 지원 언어 | 비고 |\n"
+            "|---|---|---|---|---|\n"
+            "| **faster** | Qwen3-TTS | ~6-10배 속도 | 10개 언어 | GPU 필수, 0.6B-Base 미지원 |\n"
+            "| **Qwen3-TTS** | Qwen3-TTS | 표준 속도 | 10개 언어 | CPU/GPU 모두 지원 |\n"
+            "| **Irodori-TTS** | Irodori-TTS | 6-7초/문장 | 일본어만 | GPU 필수, 48kHz 확산 모델 |\n\n"
+            "백엔드를 전환하면 앱이 자동 재시작되어, 각 탭이 해당 백엔드에 맞는 상태로 표시됩니다.\n\n"
             "**GPU 정보**\n\n"
             "현재 사용 중인 GPU 이름과 VRAM 사용량을 실시간으로 확인할 수 있습니다.\n\n"
             "**표시 언어**\n\n"
             "UI 표시 언어를 일본어 / 영어 / 중국어 / 한국어에서 선택할 수 있습니다.\n"
             "「Apply & Restart」버튼을 누르면 앱이 재시작되어 선택한 언어로 표시됩니다."
+        ),
+        "manual_irodori": (
+            "### Irodori-TTS 정보\n\n"
+            "[Irodori-TTS](https://github.com/Aratako/Irodori-TTS) 는 일본어 전용의 48kHz 확산 기반 TTS 모델입니다.\n\n"
+            "**특징**\n\n"
+            "- **48kHz・일본어 전용**: Qwen3-TTS 보다 높은 샘플레이트, 일본어 자연스러움에 중점\n"
+            "- **캡션 제어**: 보이스 디자인에서 「차분한 여성 목소리」 등 자연어로 음색 지정\n"
+            "- **제로샷 클론**: 보이스 클론에서 참조 음성 하나로 음색을 재현 (전사 불필요)\n\n"
+            "**사용법**\n\n"
+            "1. 설정 탭에서 **Irodori-TTS** 선택 (자동 재시작)\n"
+            "2. 보이스 디자인 / 보이스 클론 탭을 평소처럼 사용\n"
+            "   - 일본어 외 언어, 생성 파라미터, 참조 음성 전사 등은 잠금\n"
+            "   - 내부적으로 디자인은 `v2-VoiceDesign`, 클론은 `v3` 사용\n\n"
+            "**최초 실행 시 주의**\n\n"
+            "- 첫 생성 시 Hugging Face 에서 모델을 자동 다운로드 (수백 MB, 약 5-10분)\n"
+            "- 이후는 캐시에서 즉시 로드\n\n"
+            "**설치**\n\n"
+            "`setup.bat` / `setup.sh` 실행 시 GPU 가 감지되면 Irodori-TTS 가 자동 설치됩니다.\n"
+            "설치 경로: `%USERPROFILE%\\.vdc-engines\\Irodori-TTS\\` (Linux: `~/.vdc-engines/`)."
+        ),
+        "manual_lora": (
+            "### LoRA 학습 탭 — 음성 학습\n\n"
+            "보이스 클론으로 생성한 음성을 사용해 Irodori-TTS 의 LoRA 를 학습합니다.\n"
+            "학습 자체는 어느 백엔드에서도 실행 가능하지만, 학습된 LoRA 는 Irodori-TTS 백엔드에서만 사용 가능합니다.\n\n"
+            "1. **학습 데이터** 로 보이스 클론 출력 폴더 선택\n"
+            "2. **화자 이름** 입력 (LoRA 식별자)\n"
+            "3. **스텝 수** 선택: `quick (3000)` / `normal (10000)` / `full (30000)`\n"
+            "4. **고급 설정** (선택): 배치 사이즈, DataLoader workers, 학습률 조정 가능\n"
+            "5. **학습 시작** → `lab 변환 → jsonl → 잠재 인코드 → train.py --lora` 자동 실행\n\n"
+            "**원활한 학습**: 보이스 클론 탭의 「클론 완료 후 LoRA 학습 실행」 을 ON 하면 일괄 처리됩니다.\n\n"
+            "**출력**: `output/lora/{화자명}/`.\n\n"
+            "**주의**: LoRA 는 베이스 모델 + 참조 음성 위에 얹는 적응층이므로 추론 시에도 참조 음성이 필요합니다."
+        ),
+        "manual_irodori_infer": (
+            "### Irodori 추론 탭 — 학습된 LoRA 시연\n\n"
+            "학습된 LoRA 로 한 문장씩 생성·확인·저장하는 인터랙티브 플레이그라운드입니다.\n\n"
+            "1. **참조 음성** 선택 (LoRA 선택 시 학습 데이터에서 자동 입력)\n"
+            "2. **LoRA** 선택 (또는 \"—\" 베이스만)\n"
+            "3. **텍스트** 입력 (이모지 스타일 제어 지원)\n"
+            "4. **시드** 선택 (비우면 랜덤)\n"
+            "5. **생성** → 미리듣기 → 이름 붙여 저장\n\n"
+            "출력: `output/irodori_infer/{이름}.wav`"
         ),
     },
 }

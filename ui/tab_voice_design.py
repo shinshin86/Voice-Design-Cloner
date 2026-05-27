@@ -5,6 +5,7 @@ import gradio as gr
 from modules.voice_design import generate_voice_design, save_voice, TTS_LANGUAGES
 from modules.translator import Translator
 from modules.utils import load_presets_localized
+from modules.emoji_palette import EMOJI_CATEGORIES, append_emoji
 from config import DEFAULT_SAMPLE_TEXT, TTS_LANG
 from lang import t
 
@@ -25,6 +26,12 @@ def build_voice_design_tab(manager):
     presets_zh = load_presets_localized("zh")
     presets_en = load_presets_localized("en")
 
+    # Irodori-TTS is Japanese-only and uses a diffusion sampler whose params
+    # don't map to the Qwen-style temperature / top-p / top-k controls.
+    # When that backend is active we lock everything that wouldn't apply.
+    is_irodori = manager.backend == "irodori"
+    qwen_interactive = not is_irodori
+
     with gr.Row():
         # ── Left: 1. Prompt + 2. Params ──
         with gr.Column(scale=3):
@@ -40,11 +47,11 @@ def build_voice_design_tab(manager):
 
             with gr.Row():
                 with gr.Column(scale=1, min_width=120):
-                    translate_ja_btn = gr.Button(t("vd_btn_translate_ja"), variant="secondary")
+                    translate_ja_btn = gr.Button(t("vd_btn_translate_ja"), variant="secondary", interactive=qwen_interactive)
                 with gr.Column(scale=1, min_width=120):
-                    translate_zh_btn = gr.Button(t("vd_btn_translate_zh"), variant="secondary")
+                    translate_zh_btn = gr.Button(t("vd_btn_translate_zh"), variant="secondary", interactive=qwen_interactive)
                 with gr.Column(scale=1, min_width=120):
-                    translate_en_btn = gr.Button(t("vd_btn_translate_en"), variant="secondary")
+                    translate_en_btn = gr.Button(t("vd_btn_translate_en"), variant="secondary", interactive=qwen_interactive)
 
             gr.HTML("<div style='height: 8px'></div>")
 
@@ -57,10 +64,12 @@ def build_voice_design_tab(manager):
                     preset_zh = gr.Dropdown(
                         choices=list(presets_zh.keys()),
                         label=t("vd_preset_zh_label"), value=None,
+                        interactive=qwen_interactive,
                     )
                     preset_en = gr.Dropdown(
                         choices=list(presets_en.keys()),
                         label=t("vd_preset_en_label"), value=None,
+                        interactive=qwen_interactive,
                     )
                     clear_preset_btn = gr.Button(t("vd_btn_clear_preset"), size="sm", min_width=80)
 
@@ -71,20 +80,24 @@ def build_voice_design_tab(manager):
                 temperature = gr.Slider(
                     minimum=0.1, maximum=1.0, step=0.05,
                     value=DEFAULTS["temperature"], label=t("vd_temperature_label"),
+                    interactive=qwen_interactive,
                 )
                 top_p = gr.Slider(
                     minimum=0.1, maximum=1.0, step=0.05,
                     value=DEFAULTS["top_p"], label=t("vd_top_p_label"),
+                    interactive=qwen_interactive,
                 )
                 top_k = gr.Slider(
                     minimum=1, maximum=100, step=1,
                     value=DEFAULTS["top_k"], label=t("vd_top_k_label"),
+                    interactive=qwen_interactive,
                 )
                 rep_penalty = gr.Slider(
                     minimum=1.0, maximum=1.5, step=0.01,
                     value=DEFAULTS["repetition_penalty"], label=t("vd_rep_penalty_label"),
+                    interactive=qwen_interactive,
                 )
-                reset_params_btn = gr.Button(t("vd_btn_reset_params"))
+                reset_params_btn = gr.Button(t("vd_btn_reset_params"), interactive=qwen_interactive)
 
         # ── Right: 3. Sample text + 4. Preview + 5. Save ──
         with gr.Column(scale=2):
@@ -97,10 +110,20 @@ def build_voice_design_tab(manager):
                     lines=2,
                 )
                 tts_lang_dropdown = gr.Dropdown(
-                    choices=TTS_LANGUAGES,
-                    value=TTS_LANG,
+                    choices=(["japanese"] if is_irodori else TTS_LANGUAGES),
+                    value=("japanese" if is_irodori else TTS_LANG),
                     label=t("vd_tts_lang_label"),
+                    interactive=qwen_interactive,
                 )
+                vd_emoji_buttons: list[tuple[gr.Button, str]] = []
+                if is_irodori:
+                    with gr.Accordion(t("ii_emoji_palette_label"), open=False):
+                        for category, items in EMOJI_CATEGORIES.items():
+                            gr.Markdown(f"**{category}**")
+                            with gr.Row():
+                                for emoji, _desc in items:
+                                    btn = gr.Button(value=emoji, size="sm", min_width=44)
+                                    vd_emoji_buttons.append((btn, emoji))
 
             gr.HTML("<div style='height: 12px'></div>")
 
@@ -203,3 +226,10 @@ def build_voice_design_tab(manager):
             return t("vd_err_save_fail").format(e)
 
     keep_btn.click(fn=on_keep, inputs=[state_path, save_name, sample_text], outputs=[status])
+
+    for btn, emoji in vd_emoji_buttons:
+        btn.click(
+            fn=(lambda current, e=emoji: append_emoji(current, e)),
+            inputs=[sample_text],
+            outputs=[sample_text],
+        )
