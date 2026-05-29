@@ -13,4 +13,5 @@ if [ "${VDC_INBROWSER:-1}" = "1" ]; then
 else
     echo "[INFO] Open http://${VDC_SERVER_NAME:-127.0.0.1}:${VDC_SERVER_PORT:-7860} manually."
 fi
+echo "[INFO] If the default port is busy, the app will use the next free port (up to 7870)."
 python app.py

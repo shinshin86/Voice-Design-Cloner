@@ -80,6 +80,7 @@ Irodori-TTS は torch のバージョンが Qwen3 と非互換（2.10/cu128）�
 
 - インストール先: `%USERPROFILE%\.vdc-engines\Irodori-TTS\`（Linux: `~/.vdc-engines/`）
 - vdc 本体からはサブプロセスのワーカーとして呼び出されます
+- Irodori-TTS の checkpoint / codec は setup 中に Hugging Face から事前ダウンロードされます
 
 PyTorch は GPU に合わせて自動選択されます。RTX 50系では `cu128`、それ以外の NVIDIA GPU では `cu118` を使用します。
 自動判定を上書きしたい場合は、環境変数 `VDC_TORCH_CUDA` を指定してください。
@@ -164,10 +165,10 @@ fi
 
 **1b. Irodori-TTS セットアップ（任意: LoRA / Irodori 推論を使う場合のみ）**
 
-Irodori-TTS は Qwen3-TTS と torch のバージョンが衝突するため、別 venv で動かす設計になっています。`setup.sh` と同じく `~/.vdc-engines/Irodori-TTS/` に独立した venv を作ります。
+Irodori-TTS は Qwen3-TTS と torch のバージョンが衝突するため、別 venv で動かす設計になっています。`setup.sh` と同じく `~/.vdc-engines/Irodori-TTS/` に独立した venv を作り、その上で Hugging Face からモデル本体 (checkpoint / codec) を事前ダウンロードします。
 
-- 所要時間: **uv sync で数分〜十数分** かかります（初回のみ）
-- ディスク: モデルキャッシュ込みで **10GB 以上** 必要です
+- 所要時間: **uv sync + 事前ダウンロードで十数分** かかります（初回のみ）
+- ディスク: モデル本体込みで **10GB 以上** 必要です
 - Colab のランタイムが切断/再接続されると `/root/.vdc-engines/` は失われるため、セッションごとに再実行が必要です
 
 ```bash
@@ -179,6 +180,7 @@ if ! command -v nvidia-smi >/dev/null 2>&1; then
   exit 0
 fi
 
+VDC_ROOT="/content/Voice-Design-Cloner"
 IRODORI_ROOT="$HOME/.vdc-engines/Irodori-TTS"
 mkdir -p "$HOME/.vdc-engines"
 
@@ -187,12 +189,18 @@ if [ ! -d "$IRODORI_ROOT" ]; then
 fi
 
 pip install -U uv
-(cd "$IRODORI_ROOT" && uv sync --extra cu128)
+(
+  cd "$IRODORI_ROOT"
+  uv sync --extra cu128
+  # setup.sh と同様、hf_xet を Irodori 側 venv に追加してから checkpoint / codec を先取り
+  uv pip install --python .venv/bin/python hf_xet
+  .venv/bin/python "$VDC_ROOT/modules/irodori_predownload.py"
+)
 
 echo "[OK] Irodori-TTS installed at $IRODORI_ROOT"
 ```
 
-> セットアップ成功後は、WebUI 起動後の **設定タブ** で backend を **Irodori-TTS** に切り替えると、LoRA / Irodori 推論タブが利用できるようになります。
+> セットアップ成功後は、WebUI 起動後の **設定タブ** で backend を **Irodori-TTS** に切り替えると、LoRA / Irodori 推論タブが利用できるようになります。初回生成時のモデルダウンロード待ちは発生しません。
 
 **2. WebUI 起動 + Cloudflared 公開**
 
@@ -366,7 +374,7 @@ faster バックエンドは [faster-qwen3-tts](https://github.com/andimarafioti
 Irodori-TTS バックエンドを選択すると、ボイスデザイン/ボイスクローン両タブのUIが日本語固定モードに切り替わり、LoRA学習タブとIrodori推論タブが利用可能になります。
 バックエンドを切り替えるとアプリが自動再起動し、各タブが対応するUI状態でレンダリングされます。
 
-Irodori-TTS の初回生成時は Hugging Face からモデルを確認・ダウンロードします。コンソールに `[Irodori] Checking/downloading checkpoint...` などの進捗ログが表示されます。
+Irodori-TTS のモデル本体は setup 中に事前ダウンロードされます。生成時はコンソールに `[Irodori] Loading Irodori runtime...` などの進捗ログが表示されます。
 
 ---
 
